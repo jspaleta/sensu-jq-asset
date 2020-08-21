@@ -1,0 +1,46 @@
+#!/bin/bash
+source .env
+REPO="sensu-jq-asset"
+TAG=${GITHUB_REF#refs/tags/}
+TAG=${TAG:-devel}
+echo $TAG
+
+builds=( "linux64" "osx-amd64" "win32.exe" "win64.exe" "linux32" )
+rm -rf dist/
+mkdir -p dist/builds/
+mkdir -p dist/assets/
+cd dist/
+if [ -z ${JQ_VERSION+x} ]
+then
+	echo "ERROR: JQ_VERSION not set"
+	exit 1
+else
+	curl -sSL https://raw.githubusercontent.com/stedolan/jq/master/COPYING -o builds/COPYING
+	if [ $? -ne 0 ] 
+	then
+		echo "ERROR: can't download   https://raw.githubusercontent.com/stedolan/jq/master/COPYING" 
+		exit 1
+	fi
+	for b in ${builds[@]} 
+	do
+		mkdir -p ${JQ_VERSION}-${b}/bin
+		mkdir -p ${JQ_VERSION}-${b}/include
+		filename="jq-$b"
+		echo "Preparing to download:  https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/$filename"
+		curl -sSL https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/$filename -o builds/$filename
+		if [ $? -ne 0 ] 
+		then
+			echo "ERROR: can't download  https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/$filename" 
+			exit 1
+		fi
+		chmod a+x builds/$filename
+		mv builds/$filename ${JQ_VERSION}-${b}/bin/jq
+		cp builds/COPYING ${JQ_VERSION}-${b}/include/
+		tar czf assets/${REPO}_${TAG}_${b}.tar.gz -C  ${JQ_VERSION}-${b}/ ./
+
+	done
+	cd assets
+	sha512sum *.tar.gz > ${REPO}_${TAG}_sha512-checksums.txt
+fi
+
+

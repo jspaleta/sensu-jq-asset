@@ -1,0 +1,25 @@
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Unshallow
+        run: git fetch --prune --unshallow
+      - name: Build
+        run: ./scripts/get_jq_release
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/assets/*
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true       
